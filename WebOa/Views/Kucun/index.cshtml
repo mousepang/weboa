@@ -1,0 +1,204 @@
+﻿@{
+    ViewData["Title"] = "更新基址";
+}
+
+
+<!--导出功能需要的文件-->
+<script src="~/lib/table/tableExport.js"></script>
+<script src="~/lib/bootstrap-table/src/extensions/export/bootstrap-table-export.js"></script>
+<!--行过滤需要的文件-->
+<script src="~/lib/bootstrap-table/src/extensions/filter-control/bootstrap-table-filter-control.js"></script>
+<!--行内编辑需要的文件-->
+<script src="~/lib/bootstrap-table/src/extensions/editable/bootstrap-table-editable.js"></script>
+<script src="~/lib/bootstrap-table/src/extensions/editable/bootstrap-editable.js"></script>
+<link rel="stylesheet" href="//rawgit.com/vitalets/x-editable/master/dist/bootstrap3-editable/css/bootstrap-editable.css">
+<!--日期组件需要的文件-->
+<!--弹出提示框-->
+<script src="~/lib/toastr/toastr.min.js"></script>
+<link href="~/lib/toastr/toastr.css" rel="stylesheet" />
+
+
+
+<table id="mousetable"></table>
+
+<script type="text/javascript">
+    // 初始化设置弹出框属性
+    toastr.options = {
+        "closeButton": true,
+        "debug": false,
+        "newestOnTop": false,
+        "progressBar": true,
+        "positionClass": "toast-bottom-full-width",
+        "preventDuplicates": false,
+        "onclick": null,
+        "showDuration": "300",
+        "hideDuration": "1000",
+        "timeOut": "5000",
+        "extendedTimeOut": "1000",
+        "showEasing": "swing",
+        "hideEasing": "linear",
+        "showMethod": "fadeIn",
+        "hideMethod": "fadeOut"
+    }
+    //这里是初始化部分
+    $(function () {
+        //1.初始化Table
+        var oTable = new TableInit();
+        oTable.Init();
+    });
+
+    //表格的初始化
+    var TableInit = function () {
+        var oTableInit = new Object();
+        //初始化Table
+        oTableInit.Init = function () {
+            $('#mousetable').bootstrapTable({
+                url: '/Kucun/GetKucunList',         //请求后台的URL（*）
+                method: 'get',                      //请求方式（*）
+                striped: true,                      //是否显示行间隔色
+                cache: true,                       //是否使用缓存，默认为true，所以一般情况下需要设置一下这个属性（*）
+                pagination: false,                   //是否显示分页（*）
+                sortable: false,                     //是否启用排序
+                sortOrder: "asc",                   //排序方式
+                search: true,                       //是否显示表格搜索，此搜索是客户端搜索，不会进服务端，所以，个人感觉意义不大
+                searchOnEnterKey: false,             //自动搜索还是按回车键搜索
+                strictSearch: false,                //是否全局匹配
+                showExport: true,                     //是否显示导出
+                exportDataType: "basic",              //basic', 'all', 'selected'.
+                showColumns: true,                  //是否显示所有的列
+                showRefresh: true,                  //是否显示刷新按钮
+                minimumCountColumns: 2,             //最少允许的列数
+                clickToSelect: true,                //是否启用点击选中行
+                //height: 500,                        //行高，如果没有设置height属性，表格自动根据记录条数觉得表格高度
+                uniqueId: "id",                     //每一行的唯一标识，一般为主键列
+                showToggle: true,                    //是否显示详细视图和列表视图的切换按钮
+                cardView: false,                    //是否显示详细视图
+                detailView: false,                   //是否显示父子表
+                showFooter: false,                    //是否显示底部
+                rowStyle: oTableInit.rowStyle,      //设置行样式
+                onEditableSave: oTableInit.onEditableSave, //设置表格编辑后的参数
+                // <th data- field="index" data- formatter="indexFormatter" > 序号</th >
+               columns: [{
+                    checkbox: true
+                }, {
+                    field: 'id',
+                    title: 'id'
+                }, {
+                    field: 'index',
+                    title: '序号',
+                    formatter: "indexFormatter"
+                }, {
+                    field: 'dataServer',
+                    title: '大区',
+                    sortable: true,
+                    footerFormatter: "footerTitle"
+                }, {
+                    field: 'server',
+                    title: '服务器',
+                    sortable: true
+                }, {
+                    field: 'oldGil',
+                    title: '转移库存',
+                    sortable: true,
+                    footerFormatter: "sumFormatter"
+                }, {
+                    field: 'nowGil',
+                    title: '实时库存',
+                    sortable: true,
+                    footerFormatter: "sumFormatter"
+                }, {
+                    field: 'totalGil',
+                    title: '总库存',
+                    sortable: true,
+                    footerFormatter: "sumFormatter",
+                    cellStyle: "cellStyler"
+                }, {
+                    field: 'updataTime',
+                    title: '更新时间',
+                    sortable: true
+                },]
+            });
+        };
+        //编辑以后执行的方法
+        oTableInit.onEditableSave = function (field, row, oldValue, $el) {
+            $.ajax({
+                type: "post",
+                url: "/Kucun/Edit",
+                data: row,
+                success: function (data, status) {
+                    if (data == "ok") {
+
+                        toastr.success('修改成功');
+                    }
+                    else {
+                        toastr.info('修改失败发生了未知错误');
+                    }
+                },
+                error: function () {
+                    toastr.error('修改失败');
+                },
+                complete: function (data, status) {
+                    $("#mousetable").bootstrapTable('refresh');
+                }
+            });
+        }
+
+
+        //得到查询的参数
+        oTableInit.queryParams = function (params) {
+            var temp = {   //这里的键的名字和控制器的变量名必须一直，这边改动，控制器也需要改成一样的
+                limit: params.limit,   //页面大小
+                offset: params.offset,  //页码
+                search: params.strictSearch,
+                departmentname: $("#txt_search_departmentname").val(),
+                statu: $("#txt_search_statu").val()
+            };
+            return temp;
+        };
+        return oTableInit;
+    };
+     //尾行统计总数
+    function sumFormatter(data) {
+        field = this.field;
+        return data.reduce(function (sum, row) {
+            return sum + (+row[field]);
+        }, 0);
+    };
+
+    //生成行序列号
+    function indexFormatter(value, row, index) {
+        return index + 1;
+    };
+    //单元格样式
+    function cellStyler(value, row, index) {
+        if (value > 100000) {
+            return {
+                css: {
+                    // "background-color": "#ffee00",
+                    "color": "red",
+                    "max-width": "300px",
+                    "word-wrap": "break-word",
+                    "word-break": "normal"
+                }
+            };
+        }
+        return {
+            css: {
+            }
+        };
+    }
+    //自定义尾行显示的文本
+    function footerTitle(data) {
+        return "合计";
+    };
+
+    //清理实时库存
+    function ClearKucun() {
+        $.post("/Kucun/ClearKucun", function (data) {
+            $('#mousetable').bootstrapTable('load', data);//加载表格不会跳到第一页。
+            toastr.success('清理完成');
+        });
+    }
+
+
+</script>
