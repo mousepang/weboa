@@ -1,28 +1,33 @@
 ﻿@{
-    ViewData["Title"] = "更新基址";
+    ViewData["Title"] = "库存页面";
 }
-
-
-<!--导出功能需要的文件-->
 <script src="~/lib/table/tableExport.js"></script>
 <script src="~/lib/bootstrap-table/src/extensions/export/bootstrap-table-export.js"></script>
-<!--行过滤需要的文件-->
 <script src="~/lib/bootstrap-table/src/extensions/filter-control/bootstrap-table-filter-control.js"></script>
-<!--行内编辑需要的文件-->
 <script src="~/lib/bootstrap-table/src/extensions/editable/bootstrap-table-editable.js"></script>
 <script src="~/lib/bootstrap-table/src/extensions/editable/bootstrap-editable.js"></script>
 <link rel="stylesheet" href="//rawgit.com/vitalets/x-editable/master/dist/bootstrap3-editable/css/bootstrap-editable.css">
-<!--日期组件需要的文件-->
-<!--弹出提示框-->
 <script src="~/lib/toastr/toastr.min.js"></script>
 <link href="~/lib/toastr/toastr.css" rel="stylesheet" />
 
-
+<div id="toolbar" class="btn-group">
+    <button id="btn_server" type="button" class="btn btn-info" onclick="LoadByServer('chaos')">
+        <span class="glyphicon glyphicon-euro" aria-hidden="true"></span>欧服
+    </button>
+    <button id="btn_usa" type="button" class="btn btn-warning" onclick="LoadByServer('usa')">
+        <span class="glyphicon glyphicon-usd" aria-hidden="true"></span>美服
+    </button>
+    <button id="btn_japan" type="button" class="btn btn-danger" onclick="LoadByServer('japan')">
+        <span class="glyphicon glyphicon-jpy" aria-hidden="true"></span>日服
+    </button>
+    <button id="btn_oumei" type="button" class="btn btn-primary" onclick="LoadByServer('oumei')">
+        <span class="glyphicon glyphicon-globe" aria-hidden="true"></span>欧美
+    </button>
+</div>
 
 <table id="mousetable"></table>
 
 <script type="text/javascript">
-    // 初始化设置弹出框属性
     toastr.options = {
         "closeButton": true,
         "debug": false,
@@ -40,45 +45,45 @@
         "showMethod": "fadeIn",
         "hideMethod": "fadeOut"
     }
-    //这里是初始化部分
     $(function () {
-        //1.初始化Table
         var oTable = new TableInit();
         oTable.Init();
     });
 
-    //表格的初始化
     var TableInit = function () {
         var oTableInit = new Object();
-        //初始化Table
         oTableInit.Init = function () {
             $('#mousetable').bootstrapTable({
-                url: '/Kucun/GetKucunList',         //请求后台的URL（*）
-                method: 'get',                      //请求方式（*）
-                striped: true,                      //是否显示行间隔色
-                cache: true,                       //是否使用缓存，默认为true，所以一般情况下需要设置一下这个属性（*）
-                pagination: false,                   //是否显示分页（*）
-                sortable: false,                     //是否启用排序
-                sortOrder: "asc",                   //排序方式
-                search: true,                       //是否显示表格搜索，此搜索是客户端搜索，不会进服务端，所以，个人感觉意义不大
-                searchOnEnterKey: false,             //自动搜索还是按回车键搜索
-                strictSearch: false,                //是否全局匹配
-                showExport: true,                     //是否显示导出
-                exportDataType: "basic",              //basic', 'all', 'selected'.
-                showColumns: true,                  //是否显示所有的列
-                showRefresh: true,                  //是否显示刷新按钮
-                minimumCountColumns: 2,             //最少允许的列数
-                clickToSelect: true,                //是否启用点击选中行
-                //height: 500,                        //行高，如果没有设置height属性，表格自动根据记录条数觉得表格高度
-                uniqueId: "id",                     //每一行的唯一标识，一般为主键列
-                showToggle: true,                    //是否显示详细视图和列表视图的切换按钮
-                cardView: false,                    //是否显示详细视图
-                detailView: false,                   //是否显示父子表
-                showFooter: false,                    //是否显示底部
-                rowStyle: oTableInit.rowStyle,      //设置行样式
-                onEditableSave: oTableInit.onEditableSave, //设置表格编辑后的参数
-                // <th data- field="index" data- formatter="indexFormatter" > 序号</th >
-               columns: [{
+                url: '/Kucun/GetKucunList',         
+                method: 'get',                     
+                toolbar: '#toolbar',               
+                striped: true,                      
+                cache: true,                       
+                pagination: false,                   
+                sortable: true,                     
+                sortOrder: "asc",                 
+                queryParams: oTableInit.queryParams,
+                //queryParamsType: 'limit',
+                search: true,                      
+                searchOnEnterKey: false,             
+                strictSearch: false,                
+                showExport: true,                     
+                exportDataType: "basic",             
+                showColumns: true,                 
+                showRefresh: true,                  
+                minimumCountColumns: 2,             
+                clickToSelect: true,                                    
+                uniqueId: "id",                    
+                showToggle: true,                   
+                cardView: false,                    
+                detailView: true,                   
+                showFooter: true,                   
+                rowStyle: oTableInit.rowStyle,     
+                //onEditableSave: oTableInit.onEditableSave, //设置表格编辑后的参数
+                onExpandRow: function (index, row, $detail) {   
+                    oTableInit.InitSubTable(index, row, $detail);
+                },
+                columns: [{
                     checkbox: true
                 }, {
                     field: 'id',
@@ -117,9 +122,52 @@
                     title: '更新时间',
                     sortable: true
                 },]
-            });
+            });         
         };
-        //编辑以后执行的方法
+
+        oTableInit.InitSubTable = function (index, row, $detail) {
+            var cur_table = $detail.html('<table></table>').find('table');
+            $(cur_table).bootstrapTable({
+                url: '/Kucun/GetChildrenMenu',
+                method: 'get',
+                queryParams: { server: row.server },
+                ajaxOptions: { server: row.server },
+                clickToSelect: true,
+                detailView: false,
+                uniqueId: "id",
+                onEditableSave: oTableInit.onEditableSave, 
+                columns: [{
+                    checkbox: true
+                }, {
+                    field: 'id',
+                    title: 'ID'
+                }, {
+                    field: 'dataServer',
+                    title: '大区'
+                }, {
+                    field: 'server',
+                    title: '服务器'
+                }, {
+                    field: 'gil',
+                    title: '金币数',
+                    editable: true
+                }, {
+                    field: 'account',
+                    title: '账号'
+                }, {
+                    field: 'updataTime',
+                    title: '更新时间'
+                }, {
+                    field: 'del',
+                    title: '删除',
+                    align: 'center',
+                    events: operateEvents,
+                    formatter: operateFormatter
+                },]
+            });
+
+        };
+        
         oTableInit.onEditableSave = function (field, row, oldValue, $el) {
             $.ajax({
                 type: "post",
@@ -128,27 +176,48 @@
                 success: function (data, status) {
                     if (data == "ok") {
 
-                        toastr.success('修改成功');
+                        toastr.success('修改库存成功');
+                    }
+                    else if (data == "finderror") {
+                        toastr.warning('只支持转移库存的修改亲');
+                    }
+                    else if (data == "error") {
+                        toastr.error('修改转移库存失败');
                     }
                     else {
-                        toastr.info('修改失败发生了未知错误');
+                        toastr.info('发生了未知错误');
                     }
                 },
                 error: function () {
-                    toastr.error('修改失败');
+                    toastr.error('修改转移库存失败');
                 },
                 complete: function (data, status) {
                     $("#mousetable").bootstrapTable('refresh');
                 }
             });
         }
+      
+        oTableInit.rowStyle = function (row, index) {         
+            var strclass = "";
+            if (row.totalGil > 70000) {
+                strclass = 'danger';
+            }
+            else if (row.totalGil < 20000) {
+                strclass = 'success';
+            }
+            else if (row.totalGil > 40000 && row.totalGil < 70000) {
+                strclass = 'warning';
+            }
+            else {
+                return {};
+            }
+            return { classes: strclass }
+        };
 
-
-        //得到查询的参数
         oTableInit.queryParams = function (params) {
-            var temp = {   //这里的键的名字和控制器的变量名必须一直，这边改动，控制器也需要改成一样的
-                limit: params.limit,   //页面大小
-                offset: params.offset,  //页码
+            var temp = {   
+                limit: params.limit,   
+                offset: params.offset,  
                 search: params.strictSearch,
                 departmentname: $("#txt_search_departmentname").val(),
                 statu: $("#txt_search_statu").val()
@@ -157,7 +226,68 @@
         };
         return oTableInit;
     };
-     //尾行统计总数
+
+    var ButtonInit = function () {
+        var oInit = new Object();
+        var postdata = {};
+
+        oInit.Init = function () {
+        };
+
+        return oInit;
+    };
+
+    function operateFormatter(value, row, index) {
+        return [
+            '<a class="remove" href="javascript:void(0)" title="Remove">',
+            '<i class="glyphicon glyphicon-remove"></i>',
+            '</a>'
+        ].join('');
+    }
+
+    window.operateEvents = {
+        'click .remove': function (e, value, row, index) {
+            if (row.account == "实时仓库") {
+                toastr.error('对不起，不能删除实时库存');
+                return false;
+            }
+            else {
+                swal({
+                    title: "操作提示",     
+                    text: "在这个界面删除只会移除该账号在这个区的库存，如果这个号还有其它区将不会有影响，如果是封号请去转移库存删除？",  
+                    type: "warning",        
+                    showCancelButton: true, 
+                    confirmButtonColor: "#DD6B55",
+                    cancelButtonText: "取消",
+                    confirmButtonText: "是的，确定删除！",
+                    closeOnConfirm: true
+                }, function () {
+                    $.ajax({
+                        type: "post",
+                        url: "/Kucun/DeleteOldHouse",
+                        data: { id: row.id },
+                        success: function (data, status) {
+                            if (data == "success") {
+                                toastr.success('删除数据成功');
+                                $('#mousetable').bootstrapTable('refresh');
+                            }                           
+                            else {
+                                toastr.error('删除数据失败');
+                            }
+                        },
+                        error: function () {
+                            toastr.error('删除数据失败');
+                        },
+                        complete: function () {
+
+                        }
+
+                    });
+                });
+            }
+        }
+    };
+
     function sumFormatter(data) {
         field = this.field;
         return data.reduce(function (sum, row) {
@@ -165,16 +295,14 @@
         }, 0);
     };
 
-    //生成行序列号
     function indexFormatter(value, row, index) {
         return index + 1;
     };
-    //单元格样式
+
     function cellStyler(value, row, index) {
         if (value > 100000) {
             return {
                 css: {
-                    // "background-color": "#ffee00",
                     "color": "red",
                     "max-width": "300px",
                     "word-wrap": "break-word",
@@ -187,18 +315,22 @@
             }
         };
     }
-    //自定义尾行显示的文本
+
     function footerTitle(data) {
         return "合计";
     };
 
-    //清理实时库存
     function ClearKucun() {
         $.post("/Kucun/ClearKucun", function (data) {
-            $('#mousetable').bootstrapTable('load', data);//加载表格不会跳到第一页。
+            $('#mousetable').bootstrapTable('load', data);
             toastr.success('清理完成');
         });
     }
-
-
+        
+    function LoadByServer(server) {
+        $.post("/Kucun/GetKucunByServer", { server: server }, function (data) {
+            $('#mousetable').bootstrapTable('load', data);
+            toastr.success('加载完成');
+        });
+    }
 </script>

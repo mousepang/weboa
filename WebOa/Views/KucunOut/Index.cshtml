@@ -1,0 +1,370 @@
+﻿@{
+    ViewData["Title"] = "仓库出入";
+}
+<script src="~/lib/table/tableExport.js"></script>
+<script src="~/lib/bootstrap-table/src/extensions/export/bootstrap-table-export.js"></script>
+<script src="~/lib/bootstrap-table/src/extensions/filter-control/bootstrap-table-filter-control.js"></script>
+<script src="~/lib/bootstrap-table/src/extensions/editable/bootstrap-table-editable.js"></script>
+<script src="~/lib/bootstrap-table/src/extensions/editable/bootstrap-editable.js"></script>
+<link rel="stylesheet" href="//rawgit.com/vitalets/x-editable/master/dist/bootstrap3-editable/css/bootstrap-editable.css">
+<script src="~/lib/toastr/toastr.min.js"></script>
+<link href="~/lib/toastr/toastr.css" rel="stylesheet" />
+<script src="~/lib/bootstrap-datepicker/js/bootstrap-datepicker.zh-CN.min.js"></script>
+<link href="~/lib/bootstrap-datepicker/css/bootstrap-datepicker.standalone.css" rel="stylesheet" />
+
+
+
+<div class="panel-body" style="padding-bottom:50px;">
+    <div class="panel panel-default">
+        <div class="panel-heading"></div>
+        <div class="panel-body">
+            <h2 id="KucunTitle" style="text-align:center">按日期搜索</h2>
+            <div class="container">
+                <div class='col-sm-6'>
+                    <div class="input-daterange input-group" id="datepicker">
+                        <input type="text" class="input-sm form-control" name="start" id="start"/>
+                        <span class="input-group-addon">to</span>
+                        <input type="text" class="input-sm form-control" name="end" id="end"/>
+                    </div>
+                </div>
+                <div class='col-sm-1'>
+                    <input type='button' class="btn btn-success" value="搜索" onclick="SalesByData()" />
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<table id="mousetable"></table>
+<script type="text/javascript">
+    toastr.options = {
+        "closeButton": true,
+        "debug": false,
+        "newestOnTop": false,
+        "progressBar": true,
+        "positionClass": "toast-bottom-full-width",
+        "preventDuplicates": false,
+        "onclick": null,
+        "showDuration": "300",
+        "hideDuration": "1000",
+        "timeOut": "5000",
+        "extendedTimeOut": "1000",
+        "showEasing": "swing",
+        "hideEasing": "linear",
+        "showMethod": "fadeIn",
+        "hideMethod": "fadeOut"
+    }
+    $(function () {
+        var oTable = new TableInit();
+        oTable.Init();
+        $('#datepicker').datepicker({
+            language: "zh-CN",
+            autoclose: true
+        });
+    });
+
+    var TableInit = function () {
+        var oTableInit = new Object();
+        oTableInit.Init = function () {
+            $('#mousetable').bootstrapTable({
+                url: '/KucunOut/GetKucunOutList',         
+                method: 'get',                      
+                toolbar: '#toolbar',                
+                striped: true,                      
+                cache: true,                       
+                pagination: false,                   
+                sortable: true,                     
+                sortOrder: "asc",                  
+                queryParams: oTableInit.queryParams,
+                //queryParamsType: 'limit',
+                search: true,                       
+                searchOnEnterKey: false,             
+                strictSearch: false,                
+                showExport: true,                     
+                exportDataType: "basic",             
+                showColumns: true,                  
+                showRefresh: true,                 
+                minimumCountColumns: 2,             
+                clickToSelect: true,                                      
+                uniqueId: "id",                     
+                showToggle: true,                    
+                cardView: false,                    
+                detailView: true,                   
+                showFooter: true,                    
+                rowStyle: oTableInit.rowStyle,      
+                onExpandRow: function (index, row, $detail) {   
+                    oTableInit.InitSubTable(index, row, $detail);
+                },
+                columns: [{
+                    checkbox: true
+                }, {
+                    field: 'id',
+                    title: 'id'
+                }, {
+                    field: 'index',
+                    title: '序号',
+                    formatter: "indexFormatter"
+                }, {
+                    field: 'dataServer',
+                    title: '大区',
+                    sortable: true,
+                    footerFormatter: "footerTitle"
+                }, {
+                    field: 'server',
+                    title: '服务器',
+                    sortable: true
+                }, {
+                    field: 'outGil',
+                    title: '金币数',
+                    sortable: true,
+                    footerFormatter: "sumFormatter"
+                }, {
+                    field: 'nowKucun',
+                    title: '剩余库存',
+                    sortable: true
+                }, {
+                    field: 'name',
+                    title: '账号',
+                    sortable: true,
+                    footerFormatter: "sumFormatter",
+                }, {
+                    field: 'game_time',
+                    title: '出入时间',
+                    sortable: true
+                }, {
+                    field: 'flag',
+                    title: '出入',
+                    cellStyle: "cellStyler",
+                    sortable: true
+                }, {
+                    field: 'created_time',
+                    title: '记录时间',
+                    sortable: true
+                },]
+            });
+        };
+        oTableInit.InitSubTable = function (index, row, $detail) {
+            var cur_table = $detail.html('<table></table>').find('table');
+            $(cur_table).bootstrapTable({
+                url: '/Kucun/GetChildrenMenu',
+                method: 'get',
+                queryParams: { server: row.server },
+                ajaxOptions: { server: row.server },
+                clickToSelect: true,
+                detailView: false,//父子表
+                uniqueId: "id",
+                onEditableSave: oTableInit.onEditableSave, //设置表格编辑后的参数
+                columns: [{
+                    checkbox: true
+                }, {
+                    field: 'id',
+                    title: 'ID'
+                }, {
+                    field: 'dataServer',
+                    title: '大区'
+                }, {
+                    field: 'server',
+                    title: '服务器'
+                }, {
+                    field: 'gil',
+                    title: '金币数',
+                    editable: true
+                }, {
+                    field: 'account',
+                    title: '账号'
+                }, {
+                    field: 'updataTime',
+                    title: '更新时间'
+                }, {
+                    field: 'del',
+                    title: '删除',
+                    align: 'center',
+                    events: operateEvents,
+                    formatter: operateFormatter
+                },]
+            });
+
+        };
+        //编辑以后执行的方法
+        oTableInit.onEditableSave = function (field, row, oldValue, $el) {
+            $.ajax({
+                type: "post",
+                url: "/Kucun/Edit",
+                data: row,
+                success: function (data, status) {
+                    if (data == "ok") {
+
+                        toastr.success('修改库存成功');
+                    }
+                    else if (data == "finderror") {
+                        toastr.warning('只支持转移库存的修改亲');
+                    }
+                    else if (data == "error") {
+                        toastr.error('修改转移库存失败');
+                    }
+                    else {
+                        toastr.info('发生了未知错误');
+                    }
+                },
+                error: function () {
+                    toastr.error('修改转移库存失败');
+                },
+                complete: function (data, status) {
+                    $("#mousetable").bootstrapTable('refresh');
+                }
+            });
+        }
+        //初始化设置行颜色的方法
+        oTableInit.rowStyle = function (row, index) {
+            //这里有5个取值代表5中颜色['active', 'success', 'info', 'warning', 'danger'];
+            var strclass = "";
+            if (row.totalGil > 70000) {
+                strclass = 'danger';//还有一个active
+            }
+            else if (row.totalGil < 20000) {
+                strclass = 'success';
+            }
+            else if (row.totalGil > 40000 && row.totalGil < 70000) {
+                strclass = 'warning';
+            }
+            else {
+                return {};
+            }
+            return { classes: strclass }
+        };
+
+        //得到查询的参数
+        oTableInit.queryParams = function (params) {
+            var temp = {   //这里的键的名字和控制器的变量名必须一直，这边改动，控制器也需要改成一样的
+                limit: params.limit,   //页面大小
+                offset: params.offset,  //页码
+                search: params.strictSearch,
+                departmentname: $("#txt_search_departmentname").val(),
+                statu: $("#txt_search_statu").val()
+            };
+            return temp;
+        };
+        return oTableInit;
+    };
+
+    //表格按钮事件的初始化
+    var ButtonInit = function () {
+        var oInit = new Object();
+        var postdata = {};
+
+        oInit.Init = function () {
+            //初始化页面上面的按钮事件
+        };
+
+        return oInit;
+    };
+
+    function operateFormatter(value, row, index) {
+        return [
+            '<a class="remove" href="javascript:void(0)" title="Remove">',
+            '<i class="glyphicon glyphicon-remove"></i>',
+            '</a>'
+        ].join('');
+    }
+
+    window.operateEvents = {
+        'click .remove': function (e, value, row, index) {
+            if (row.account == "实时仓库") {
+                toastr.error('对不起，不能删除实时库存');
+                return false;
+            }
+            else {
+                swal({
+                    title: "操作提示",      //弹出框的title
+                    text: "在这个界面删除只会移除该账号在这个区的库存，如果这个号还有其它区将不会有影响，如果是封号请去转移库存删除？",   //弹出框里面的提示文本
+                    type: "warning",        //弹出框类型
+                    showCancelButton: true, //是否显示取消按钮
+                    confirmButtonColor: "#DD6B55",//确定按钮颜色
+                    cancelButtonText: "取消",//取消按钮文本
+                    confirmButtonText: "是的，确定删除！",//确定按钮上面的文档
+                    closeOnConfirm: true
+                }, function () {
+                    $.ajax({
+                        type: "post",
+                        url: "/Kucun/DeleteOldHouse",
+                        data: { id: row.id },
+                        success: function (data, status) {
+                            if (data == "success") {
+                                toastr.success('删除数据成功');
+                                $('#mousetable').bootstrapTable('refresh');
+                            }
+                            else {
+                                toastr.error('删除数据失败');
+                            }
+                        },
+                        error: function () {
+                            toastr.error('删除数据失败');
+                        },
+                        complete: function () {
+
+                        }
+
+                    });
+                });
+            }
+        }
+    };
+    //尾行统计总数
+    function sumFormatter(data) {
+        field = this.field;
+        return data.reduce(function (sum, row) {
+            return sum + (+row[field]);
+        }, 0);
+    };
+
+    //生成行序列号
+    function indexFormatter(value, row, index) {
+        return index + 1;
+    };
+    //单元格样式
+    function cellStyler(value, row, index) {
+        if (value > 100000) {
+            return {
+                css: {
+                    "color": "red",
+                    "max-width": "300px",
+                    "word-wrap": "break-word",
+                    "word-break": "normal"
+                }
+            };
+        }
+        return {
+            css: {
+            }
+        };
+    }
+    //自定义尾行显示的文本
+    function footerTitle(data) {
+        return "合计";
+    };
+
+    //清理实时库存
+    function ClearKucun() {
+        $.post("/Kucun/ClearKucun", function (data) {
+            $('#mousetable').bootstrapTable('load', data);//加载表格不会跳到第一页。
+            toastr.success('清理完成');
+        });
+    }
+
+    //根据按钮点击的服务器重新加载表格
+    function LoadByServer(server) {
+        $.post("/Kucun/GetKucunByServer", { server: server }, function (data) {
+            $('#mousetable').bootstrapTable('load', data);//加载表格不会跳到第一页。
+            toastr.success('加载完成');
+        });
+    }
+
+     function SalesByData() {
+        var start = $('#start').val();
+        var end = $('#end').val();
+        $.post("/KucunOut/GetSalesByData", { start: start, end: end }, function (data) {
+            $('#mousetable').bootstrapTable('load', data);//加载表格不会跳到第一页。
+            toastr.success('加载完成');
+        });
+    }
+</script>
